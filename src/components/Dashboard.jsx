@@ -52,7 +52,7 @@ export default function Dashboard() {
     }
   }, [transactions])
 
-  const formatCurrency = (val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   return (
     <div className="space-y-5">

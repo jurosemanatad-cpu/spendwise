@@ -34,7 +34,7 @@ export default function Transactions() {
     setTransactions(updated)
   }
 
-  const formatCurrency = (val) => `$${val.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
   const grouped = useMemo(() => {
     const groups = {}
