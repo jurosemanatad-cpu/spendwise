@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Plus, Trash2, AlertTriangle } from 'lucide-react'
+import { Plus, Trash2, AlertTriangle, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { getBudgets, setBudget, deleteBudget, getTransactions } from '../utils/storage'
 import { EXPENSE_CATEGORIES, getCategoryById } from '../constants/categories'
 
@@ -9,41 +9,49 @@ export default function Budgets() {
   const [showAdd, setShowAdd] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [budgetAmount, setBudgetAmount] = useState('')
+  
+  // NEW: Track the currently viewed month
+  const [viewDate, setViewDate] = useState(new Date())
 
   const refresh = () => {
     setBudgets(getBudgets())
     setTransactions(getTransactions())
   }
-
+  
   useEffect(() => { refresh() }, [])
 
-  const now = new Date()
-  const currentMonth = now.getMonth()
-  const currentYear = now.getFullYear()
+  // Generate the YYYY-MM key for the currently viewed month
+  const currentMonthKey = `${viewDate.getFullYear()}-${String(viewDate.getMonth() + 1).padStart(2, '0')}` 
 
   const budgetStatus = useMemo(() => {
-    return budgets.map(b => {
+    // Only look at budgets assigned to THIS specific month
+    const monthlyBudgets = budgets.filter(b => b.monthKey === currentMonthKey)
+
+    return monthlyBudgets.map(b => {
       const spent = transactions
         .filter(t => {
           const d = new Date(t.date)
-          return t.type === 'expense' && t.category === b.categoryId && d.getMonth() === currentMonth && d.getFullYear() === currentYear
+          return t.type === 'expense' && 
+                 t.category === b.categoryId && 
+                 d.getMonth() === viewDate.getMonth() && 
+                 d.getFullYear() === viewDate.getFullYear()
         })
         .reduce((sum, t) => sum + t.amount, 0)
-
+        
       const cat = getCategoryById(b.categoryId)
       const pct = b.amount > 0 ? Math.min((spent / b.amount) * 100, 100) : 0
       const over = spent > b.amount
-
       return { ...b, spent, cat, pct, over }
     })
-  }, [budgets, transactions, currentMonth, currentYear])
+  }, [budgets, transactions, viewDate, currentMonthKey])
 
-  const existingCategoryIds = budgets.map(b => b.categoryId)
+  const existingCategoryIds = budgetStatus.map(b => b.categoryId)
   const availableCategories = EXPENSE_CATEGORIES.filter(c => !existingCategoryIds.includes(c.id))
 
   const handleAdd = () => {
     if (!selectedCategory || !budgetAmount || Number(budgetAmount) <= 0) return
-    setBudget(selectedCategory, Number(budgetAmount))
+    // Save budget with the current month key attached
+    setBudget(selectedCategory, Number(budgetAmount), currentMonthKey)
     setSelectedCategory('')
     setBudgetAmount('')
     setShowAdd(false)
@@ -51,15 +59,47 @@ export default function Budgets() {
   }
 
   const handleDelete = (categoryId) => {
-    deleteBudget(categoryId)
+    deleteBudget(categoryId, currentMonthKey)
     refresh()
   }
 
-  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))
+    setShowAdd(false) // Close form when navigating
+  }
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))
+    setShowAdd(false) // Close form when navigating
+  }
+
+  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      {/* Month Navigator */}
+      <div className="card p-3 flex items-center justify-between bg-white/60 dark:bg-gray-800/60 backdrop-blur-md">
+        <button 
+          onClick={handlePrevMonth}
+          className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        
+        <div className="flex items-center gap-2 font-bold text-gray-800 dark:text-white">
+          <Calendar size={18} className="text-emerald-500" />
+          {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </div>
+
+        <button 
+          onClick={handleNextMonth}
+          className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between mt-2">
         <h2 className="text-lg font-bold text-gray-900 dark:text-white">Monthly Budgets</h2>
         {availableCategories.length > 0 && (
           <button
@@ -86,7 +126,7 @@ export default function Budgets() {
             ))}
           </select>
           <div className="relative">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">$</span>
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">₱</span>
             <input
               type="number"
               value={budgetAmount}
@@ -133,7 +173,6 @@ export default function Budgets() {
               </button>
             </div>
           </div>
-
           {/* Progress Bar */}
           <div className="h-2.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden mb-2">
             <div
@@ -141,7 +180,6 @@ export default function Budgets() {
               style={{ width: `${b.pct}%` }}
             />
           </div>
-
           <div className="flex justify-between text-xs">
             <span className={`${b.over ? 'text-red-500 font-semibold' : 'text-gray-500 dark:text-gray-400'}`}>
               {formatCurrency(b.spent)} spent
@@ -153,10 +191,10 @@ export default function Budgets() {
         </div>
       ))}
 
-      {budgets.length === 0 && !showAdd && (
+      {budgetStatus.length === 0 && !showAdd && (
         <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-          <p className="text-sm">No budgets set yet</p>
-          <p className="text-xs mt-1">Add a budget to track your spending limits</p>
+          <p className="text-sm">No budgets set for this month</p>
+          <p className="text-xs mt-1">Add a budget to plan your spending</p>
         </div>
       )}
     </div>

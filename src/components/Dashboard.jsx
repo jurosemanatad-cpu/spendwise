@@ -1,61 +1,114 @@
-import { useMemo } from 'react'
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, ChevronLeft, ChevronRight, Calendar } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getTransactions } from '../utils/storage'
-import { getCategoryById, EXPENSE_CATEGORIES } from '../constants/categories'
+import { getCategoryById } from '../constants/categories'
 
 export default function Dashboard() {
   const transactions = getTransactions()
+  // NEW: Track the currently viewed month
+  const [viewDate, setViewDate] = useState(new Date())
 
-  const { totalIncome, totalExpenses, balance, recentTransactions, expenseByCategory, monthlyData } = useMemo(() => {
-    const now = new Date()
-    const currentMonth = now.getMonth()
-    const currentYear = now.getFullYear()
+  const { totalIncome, totalExpenses, balance, monthlyRecent, expenseByCategory, monthlyData } = useMemo(() => {
+    const viewMonth = viewDate.getMonth()
+    const viewYear = viewDate.getFullYear()
 
     let income = 0
     let expenses = 0
     const categoryMap = {}
     const monthMap = {}
 
+    // Setup 6-month trailing data for the bar chart based on the viewed month
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(viewYear, viewMonth - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` 
+      // Format as "Jan", "Feb", etc.
+      const label = d.toLocaleDateString('en-US', { month: 'short' }) 
+      monthMap[key] = { month: label, fullKey: key, income: 0, expenses: 0 }
+    }
+
+    const currentMonthTransactions = []
+
     transactions.forEach(t => {
       const d = new Date(t.date)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      const tMonth = d.getMonth()
+      const tYear = d.getFullYear()
+      const key = `${tYear}-${String(tMonth + 1).padStart(2, '0')}` 
 
-      if (!monthMap[key]) monthMap[key] = { month: key, income: 0, expenses: 0 }
-      if (t.type === 'income') {
-        income += t.amount
-        monthMap[key].income += t.amount
-      } else {
-        expenses += t.amount
-        monthMap[key].expenses += t.amount
-        const cat = getCategoryById(t.category)
-        categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount
+      // 1. Populate the 6-month Bar Chart
+      if (monthMap[key]) {
+        if (t.type === 'income') monthMap[key].income += t.amount
+        else monthMap[key].expenses += t.amount
+      }
+
+      // 2. Isolate data ONLY for the currently selected month
+      if (tMonth === viewMonth && tYear === viewYear) {
+        currentMonthTransactions.push(t)
+        if (t.type === 'income') {
+          income += t.amount
+        } else {
+          expenses += t.amount
+          categoryMap[t.category] = (categoryMap[t.category] || 0) + t.amount
+        }
       }
     })
 
-    const expenseByCategory = Object.entries(categoryMap).map(([id, amount]) => ({
-      ...getCategoryById(id),
-      value: amount,
-    }))
-
-    const monthlyData = Object.values(monthMap)
-      .sort((a, b) => a.month.localeCompare(b.month))
-      .slice(-6)
+    // Sort categories by highest expense
+    const expenseByCategory = Object.entries(categoryMap)
+      .map(([id, amount]) => ({
+        ...getCategoryById(id),
+        value: amount,
+      }))
+      .sort((a, b) => b.value - a.value)
 
     return {
       totalIncome: income,
       totalExpenses: expenses,
       balance: income - expenses,
-      recentTransactions: transactions.slice(0, 5),
+      // Only keep 5 recent transactions for the dashboard
+      monthlyRecent: currentMonthTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 5),
       expenseByCategory,
-      monthlyData,
+      monthlyData: Object.values(monthMap)
     }
-  }, [transactions])
+  }, [transactions, viewDate])
 
-  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  const handlePrevMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() - 1, 1))
+  }
+
+  // UNLOCKED: You can now go into the future infinitely
+  const handleNextMonth = () => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1))
+  }
+
+  // Format as ₱10,000.00
+  const formatCurrency = (val) => `₱${val.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` 
 
   return (
     <div className="space-y-5">
+      
+      {/* NEW: Month Navigator */}
+      <div className="card p-3 flex items-center justify-between bg-white/60 dark:bg-gray-800/60 backdrop-blur-md">
+        <button 
+          onClick={handlePrevMonth}
+          className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
+        >
+          <ChevronLeft size={20} />
+        </button>
+        
+        <div className="flex items-center gap-2 font-bold text-gray-800 dark:text-white">
+          <Calendar size={18} className="text-emerald-500" />
+          {viewDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </div>
+
+        <button 
+          onClick={handleNextMonth}
+          className="p-2 rounded-lg hover:bg-emerald-50 dark:hover:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 transition-colors"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 gap-3">
         <div className="card p-4">
@@ -85,15 +138,15 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Monthly Chart */}
-      {monthlyData.length > 0 && (
+      {/* Monthly Chart (6-Month Trend) */}
+      {monthlyData.some(d => d.income > 0 || d.expenses > 0) && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Monthly Overview</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">6-Month Trend</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={monthlyData}>
-              <XAxis dataKey="month" tick={{ fontSize: 11 }} tickFormatter={(v) => v.slice(5)} />
-              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `$${v}`} />
-              <Tooltip formatter={(v) => `$${v}`} />
+              <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₱${v}`} width={60} />
+              <Tooltip formatter={(v) => `₱${v.toLocaleString()}`} cursor={{ fill: 'transparent' }} />
               <Bar dataKey="income" fill="#10b981" radius={[4, 4, 0, 0]} />
               <Bar dataKey="expenses" fill="#ef4444" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -101,10 +154,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Expense Breakdown */}
+      {/* Expense Breakdown for the Selected Month */}
       {expenseByCategory.length > 0 && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Expense Breakdown</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">Where your money went</h3>
           <div className="flex items-center gap-4">
             <ResponsiveContainer width="50%" height={160}>
               <PieChart>
@@ -113,17 +166,19 @@ export default function Dashboard() {
                     <Cell key={i} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip formatter={(v) => `$${v}`} />
+                <Tooltip formatter={(v) => `₱${v.toLocaleString()}`} />
               </PieChart>
             </ResponsiveContainer>
-            <div className="flex-1 space-y-1.5 max-h-40 overflow-y-auto">
-              {expenseByCategory.slice(0, 5).map((cat) => (
+            <div className="flex-1 space-y-2 max-h-40 overflow-y-auto pr-1">
+              {expenseByCategory.map((cat) => (
                 <div key={cat.id} className="flex items-center justify-between text-xs">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: cat.color }} />
-                    <span className="text-gray-600 dark:text-gray-400">{cat.icon} {cat.label}</span>
+                  <span className="flex items-center gap-1.5 truncate">
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                    <span className="text-gray-600 dark:text-gray-400 truncate">{cat.icon} {cat.label}</span>
                   </span>
-                  <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(cat.value)}</span>
+                  <span className="font-medium text-gray-900 dark:text-white shrink-0 ml-2">
+                    {formatCurrency(cat.value)}
+                  </span>
                 </div>
               ))}
             </div>
@@ -131,12 +186,12 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Recent Transactions */}
-      {recentTransactions.length > 0 && (
+      {/* Recent Transactions for the Selected Month */}
+      {monthlyRecent.length > 0 && (
         <div className="card p-5">
-          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent Transactions</h3>
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Recent in {viewDate.toLocaleDateString('en-US', { month: 'long' })}</h3>
           <div className="space-y-3">
-            {recentTransactions.map((t) => {
+            {monthlyRecent.map((t) => {
               const cat = getCategoryById(t.category)
               return (
                 <div key={t.id} className="flex items-center justify-between">
@@ -164,10 +219,10 @@ export default function Dashboard() {
         </div>
       )}
 
-      {transactions.length === 0 && (
+      {monthlyRecent.length === 0 && (
         <div className="text-center py-12 text-gray-400 dark:text-gray-500">
-          <Wallet size={48} className="mx-auto mb-3 opacity-50" />
-          <p className="text-lg font-medium">No transactions yet</p>
+          <Calendar size={48} className="mx-auto mb-3 opacity-50" />
+          <p className="text-lg font-medium">No activity this month</p>
           <p className="text-sm">Tap the + button to add your first transaction</p>
         </div>
       )}
