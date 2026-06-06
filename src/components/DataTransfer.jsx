@@ -20,17 +20,15 @@ export default function DataTransfer({ onClose, onRefresh, showToast, onLogout }
   const handleFileChange = async (e) => {
     const file = e.target.files[0]
     if (!file) return
-
     if (file.type !== 'application/json' && !file.name.endsWith('.json')) {
       showToast('Please upload a valid JSON backup file', 'warning')
       return
     }
-
     setIsImporting(true)
     try {
       await importAllData(file)
       showToast('Data restored successfully!', 'success')
-      onRefresh() // Refresh the app to show new data
+      onRefresh() 
       setTimeout(onClose, 1000)
     } catch (error) {
       showToast('Failed to restore data', 'warning')
@@ -42,7 +40,6 @@ export default function DataTransfer({ onClose, onRefresh, showToast, onLogout }
 
   return (
     <div className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      {/* Leaf-shaped Glassmorphism Modal */}
       <div className="w-full max-w-sm bg-white/70 dark:bg-gray-800/70 backdrop-blur-xl border border-white/50 dark:border-gray-700/50 shadow-2xl p-6 rounded-tl-[3rem] rounded-br-[3rem] rounded-tr-xl rounded-bl-xl relative animate-in fade-in zoom-in duration-200">
         
         <button 
@@ -58,7 +55,8 @@ export default function DataTransfer({ onClose, onRefresh, showToast, onLogout }
         </h2>
 
         <div className="space-y-4">
-          {/* CSV Export Button */}
+          
+          {/* Export CSV Button */}
           <button
             onClick={handleExportCSV}
             className="w-full flex items-center justify-between p-4 bg-white/50 dark:bg-gray-700/50 hover:bg-white dark:hover:bg-gray-600 border border-white/60 dark:border-gray-600 rounded-tl-2xl rounded-br-2xl rounded-tr-md rounded-bl-md transition-all group"

@@ -10,3 +10,8 @@ body {
     @apply bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700;
   }
 }
+
+/* Force standard colors for print-like operations */
+#report-content * {
+  color-interpolation-filters: sRGB !important;
+}
