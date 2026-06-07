@@ -3,7 +3,6 @@ import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight, Chevron
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { getTransactions } from '../utils/storage'
 import { getCategoryById } from '../constants/categories'
-import FinancialNewsFeed from './FinancialNewsFeed'
 
 export default function Dashboard() {
   const transactions = getTransactions()
@@ -101,7 +100,7 @@ export default function Dashboard() {
           <div className={leafCardStyle}>
             <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 mb-2">
               <TrendingUp size={20} />
-              <span className="text-sm font-medium">Income</span>
+              <span className="text-sm font-medium">Budget</span>
             </div>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(totalIncome)}</p>
           </div>
@@ -219,7 +218,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        <FinancialNewsFeed />
       </div>
     </div>
   )

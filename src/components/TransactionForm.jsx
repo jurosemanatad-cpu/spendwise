@@ -2,38 +2,30 @@ import { useState } from 'react'
 import { X } from 'lucide-react'
 import { INCOME_CATEGORIES, EXPENSE_CATEGORIES } from '../constants/categories'
 import { addTransaction } from '../utils/storage'
-import { convertToPHP } from '../utils/currency' // Import the new utility
 
-export default function TransactionForm({ onClose }) {
-  const [type, setType] = useState('expense')
-  const [category, setCategory] = useState('')
-  const [amount, setAmount] = useState('')
-  const [currency, setCurrency] = useState('PHP')
-  const [isConverting, setIsConverting] = useState(false)
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10))
-  const [note, setNote] = useState('')
+// Add initialData to the props
+export default function TransactionForm({ onClose, initialData }) {
+  // Use initialData to pre-fill the form, or fallback to defaults
+  const [type, setType] = useState(initialData?.type || 'expense')
+  const [category, setCategory] = useState(initialData?.category || '')
+  const [amount, setAmount] = useState(initialData?.amount || '')
+  const [date, setDate] = useState(initialData?.date || new Date().toISOString().slice(0, 10))
+  const [note, setNote] = useState(initialData?.note || '')
 
   const categories = type === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!category || !amount || Number(amount) <= 0) return
-
-    setIsConverting(true)
-    
-    // Process the conversion
-    const finalAmountInPHP = await convertToPHP(Number(amount), currency)
 
     addTransaction({
       type,
       category,
-      amount: finalAmountInPHP,
-      originalCurrency: currency, // Track what they originally entered
+      amount: Number(amount),
       date,
       note: note.trim(),
     })
     
-    setIsConverting(false)
     onClose()
   }
 
@@ -53,20 +45,20 @@ export default function TransactionForm({ onClose }) {
         <form onSubmit={handleSubmit} className="space-y-5">
           {/* Type Toggle */}
           <div className="flex bg-white/40 dark:bg-gray-900/40 backdrop-blur-md rounded-xl p-1 border border-white/20">
-            {['expense', 'income'].map((t) => (
+            {[ { id: 'expense', label: 'Expense' }, { id: 'income', label: 'Funds' } ].map((t) => (
               <button
-                key={t}
+                key={t.id}
                 type="button"
-                onClick={() => { setType(t); setCategory('') }}
+                onClick={() => { setType(t.id); setCategory('') }}
                 className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                  type === t
-                    ? t === 'income'
+                  type === t.id
+                    ? t.id === 'income'
                       ? 'bg-emerald-500/90 backdrop-blur-md text-white shadow-sm'
                       : 'bg-red-500/90 backdrop-blur-md text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:bg-white/20'
                 }`}
               >
-                {t.charAt(0).toUpperCase() + t.slice(1)}
+                {t.label}
               </button>
             ))}
           </div>
@@ -93,7 +85,7 @@ export default function TransactionForm({ onClose }) {
             </div>
           </div>
 
-          {/* Amount & Currency */}
+          {/* Amount */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Amount</label>
             <div className="relative flex shadow-sm rounded-xl">
@@ -104,19 +96,8 @@ export default function TransactionForm({ onClose }) {
                 placeholder="0.00"
                 min="0.01"
                 step="0.01"
-                className="w-full pl-4 pr-24 py-3 rounded-l-xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border border-r-0 border-white/20 dark:border-gray-600 text-gray-900 dark:text-white text-lg focus:ring-2 focus:ring-emerald-500 outline-none"
+                className="w-full px-4 py-3 rounded-xl bg-white/50 dark:bg-gray-900/50 backdrop-blur-md border border-white/20 dark:border-gray-600 text-gray-900 dark:text-white text-lg focus:ring-2 focus:ring-emerald-500 outline-none"
               />
-              <select
-                value={currency}
-                onChange={(e) => setCurrency(e.target.value)}
-                disabled={!navigator.onLine}
-                className="absolute right-0 h-full px-3 rounded-r-xl bg-emerald-500/10 dark:bg-emerald-500/20 backdrop-blur-md border border-white/20 dark:border-gray-600 text-emerald-700 dark:text-emerald-400 font-bold outline-none cursor-pointer disabled:opacity-50"
-              >
-                <option value="PHP">PHP</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="JPY">JPY</option>
-              </select>
             </div>
           </div>
 
@@ -146,10 +127,10 @@ export default function TransactionForm({ onClose }) {
           {/* Submit */}
           <button
             type="submit"
-            disabled={!category || !amount || Number(amount) <= 0 || isConverting}
+            disabled={!category || !amount || Number(amount) <= 0}
             className="w-full py-3.5 bg-emerald-500/90 backdrop-blur-md text-white rounded-tr-2xl rounded-bl-2xl rounded-tl-md rounded-br-md font-semibold text-lg hover:bg-emerald-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg"
           >
-            {isConverting ? 'Processing...' : 'Add Transaction'}
+            Add Transaction
           </button>
         </form>
       </div>

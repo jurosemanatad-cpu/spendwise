@@ -16,6 +16,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showForm, setShowForm] = useState(false)
   const [showTransfer, setShowTransfer] = useState(false)
+  const [scannedData, setScannedData] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     const prefersDark = localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)
     if (prefersDark) document.documentElement.classList.add('dark')
@@ -64,7 +65,9 @@ function App() {
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-4 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-emerald-600">SpendWise</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-emerald-600 truncate">
+            SpendWise - <span className="text-black dark:text-white capitalize">{activeUser}</span>
+          </h1>
           
           {/* Added flex container for header buttons */}
           <div className="flex items-center gap-2">
@@ -149,14 +152,28 @@ function App() {
         </div>
       )}
 
-      {showForm && !isAdmin && <TransactionForm onClose={() => { setShowForm(false); refresh() }} />}
+      {showForm && !isAdmin && (
+        <TransactionForm
+          onClose={() => {
+            setShowForm(false);
+            setScannedData(null); // Clear data when closed
+            refresh();
+          }}
+          initialData={scannedData}
+        />
+      )}
 
       {showTransfer && !isAdmin && (
-        <DataTransfer 
-          onClose={() => setShowTransfer(false)} 
+        <DataTransfer
+          onClose={() => setShowTransfer(false)}
           onRefresh={refresh}
           showToast={showToast}
           onLogout={handleLogout}
+          onScanSuccess={(data) => {
+            setScannedData(data)        // 1. Save the scanned data
+            setShowTransfer(false)      // 2. Close the Data Transfer screen
+            setShowForm(true)           // 3. Open the Transaction Form
+          }}
         />
       )}
     </div>

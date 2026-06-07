@@ -111,17 +111,21 @@ export default function Transactions() {
 
       {/* Filter Tabs */}
       <div className="flex bg-gray-100 dark:bg-gray-700 rounded-xl p-1">
-        {['all', 'income', 'expense'].map((f) => (
+        {[
+          { id: 'all', label: 'All' },
+          { id: 'income', label: 'Budget' },
+          { id: 'expense', label: 'Expense' }
+        ].map((f) => (
           <button
-            key={f}
-            onClick={() => setFilter(f)}
+            key={f.id}
+            onClick={() => setFilter(f.id)}
             className={`flex-1 py-2 rounded-lg text-sm font-medium transition-all ${
-              filter === f
+              filter === f.id
                 ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
                 : 'text-gray-500 dark:text-gray-400'
             }`}
           >
-            {f.charAt(0).toUpperCase() + f.slice(1)}
+            {f.label}
           </button>
         ))}
       </div>

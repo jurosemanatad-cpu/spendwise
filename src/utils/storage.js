@@ -13,30 +13,72 @@ export function logoutUser() {
 export function loginUser(username, password) {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
   const normalizedUsername = username.trim().toLowerCase()
-  
-  if (!users[normalizedUsername]) {
+  const user = users[normalizedUsername]
+
+  if (!user) {
     return { success: false, error: 'User does not exist. Please create an account.' }
   }
-  
-  if (users[normalizedUsername] === password) {
+
+  // Handle older string-based passwords for backwards compatibility
+  const storedPassword = typeof user === 'string' ? user : user.password
+
+  // Prevent login if account exists but is not verified
+  if (user.isVerified === false) {
+    return { success: false, error: 'Please check your email and click the activation link to verify your account.' }
+  }
+
+  if (storedPassword === password) {
     localStorage.setItem(ACTIVE_USER_KEY, normalizedUsername)
     return { success: true }
   }
-  
   return { success: false, error: 'Incorrect password' }
 }
 
-export function createUser(username, password) {
+export function checkUserExists(username) {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
   const normalizedUsername = username.trim().toLowerCase()
-  
+  return !!users[normalizedUsername]
+}
+
+export function createUser(username, password, email = '', firstName = '', lastName = '', age = '', gender = '') {
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
+  const normalizedUsername = username.trim().toLowerCase()
+
   if (users[normalizedUsername]) {
     return { success: false, error: 'Username already exists' }
   }
-  
-  users[normalizedUsername] = password
+
+  // Save the user as fully verified (verification is handled in Auth.jsx now)
+  users[normalizedUsername] = { 
+    password, 
+    email, 
+    firstName, 
+    lastName,
+    age,
+    gender,
+    isVerified: true 
+  }
   localStorage.setItem(USERS_KEY, JSON.stringify(users))
-  // Note: We do NOT set the ACTIVE_USER_KEY here, so they aren't auto-logged in.
+  
+  return { success: true }
+}
+
+export function verifyUserEmail(username, email) {
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
+  const normalizedUsername = username.trim().toLowerCase()
+  const user = users[normalizedUsername]
+
+  if (!user) {
+    return { success: false, error: 'User does not exist.' }
+  }
+  
+  // Handle backwards compatibility if data is just a string
+  const storedEmail = typeof user === 'string' ? '' : user.email
+  
+  if (storedEmail !== email) {
+    return { success: false, error: 'Email does not match our records.' }
+  }
+  
   return { success: true }
 }
 
@@ -164,19 +206,32 @@ export async function importAllData(file) {
   })
 }
 
+
+
 // --- ADMIN FUNCTIONS ---
 export function getAllUsers() {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
-  // Convert the object into an array and filter out the 'admin' account itself
+  
   return Object.entries(users)
-    .map(([username, password]) => ({ username, password }))
+    .map(([username, data]) => {
+      // Backwards compatibility if data is just a string (password)
+      if (typeof data === 'string') {
+        return { username, password: data, email: '', firstName: '', lastName: '', age: '', gender: '' }
+      }
+      return { username, ...data }
+    })
     .filter(u => u.username !== 'admin')
 }
 
-export function updateUserPassword(targetUsername, newPassword) {
+// Replaced updateUserPassword with updateUserDetails
+export function updateUserDetails(targetUsername, details) {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
   if (users[targetUsername]) {
-    users[targetUsername] = newPassword
+    const existingData = typeof users[targetUsername] === 'string' 
+      ? { password: users[targetUsername] } 
+      : users[targetUsername]
+
+    users[targetUsername] = { ...existingData, ...details }
     localStorage.setItem(USERS_KEY, JSON.stringify(users))
     return true
   }
