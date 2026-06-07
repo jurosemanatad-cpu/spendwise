@@ -10,6 +10,13 @@ export function logoutUser() {
   localStorage.removeItem(ACTIVE_USER_KEY)
 }
 
+export function getUserDetails(username) {
+  if (!username) return null
+  const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
+  const user = users[username.trim().toLowerCase()]
+  return typeof user === 'string' ? null : user
+}
+
 export function loginUser(username, password) {
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
   const normalizedUsername = username.trim().toLowerCase()

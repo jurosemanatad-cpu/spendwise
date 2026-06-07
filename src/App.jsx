@@ -7,7 +7,7 @@ import TransactionForm from './components/TransactionForm'
 import DataTransfer from './components/DataTransfer'
 import Auth from './components/Auth'
 import AdminPanel from './components/AdminPanel'
-import { getActiveUser, logoutUser } from './utils/storage'
+import { getActiveUser, logoutUser, getUserDetails } from './utils/storage'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getActiveUser())
@@ -59,6 +59,8 @@ function App() {
   }
 
   const isAdmin = activeUser === 'admin'
+  const userDetails = getUserDetails(activeUser)
+  const displayName = userDetails?.firstName ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim() : activeUser
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">
@@ -66,7 +68,7 @@ function App() {
       <header className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-50">
         <div className="max-w-2xl mx-auto px-4 py-4 flex justify-between items-center">
           <h1 className="text-xl sm:text-2xl font-bold text-emerald-600 truncate">
-            SpendWise - <span className="text-black dark:text-white capitalize">{activeUser}</span>
+            SpendWise - <span className="text-black dark:text-white capitalize">{displayName}</span>
           </h1>
           
           {/* Added flex container for header buttons */}
