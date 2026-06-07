@@ -7,11 +7,12 @@ import TransactionForm from './components/TransactionForm'
 import DataTransfer from './components/DataTransfer'
 import Auth from './components/Auth'
 import AdminPanel from './components/AdminPanel'
-import { getActiveUser, logoutUser, getUserDetails } from './utils/storage'
+import { getActiveUser, logoutUser, getActiveUserDetails } from './utils/storage'
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(!!getActiveUser())
   const [activeUser, setActiveUser] = useState(getActiveUser())
+  const [activeUserDetails, setActiveUserDetails] = useState(getActiveUserDetails())
   
   const [activeTab, setActiveTab] = useState('dashboard')
   const [showForm, setShowForm] = useState(false)
@@ -46,6 +47,7 @@ function App() {
   const handleLogout = () => {
     logoutUser()
     setActiveUser(null)
+    setActiveUserDetails(null)
     setShowTransfer(false)
     setIsAuthenticated(false)
   }
@@ -54,13 +56,15 @@ function App() {
     return <Auth onLogin={() => {
       refresh()
       setActiveUser(getActiveUser())
+      setActiveUserDetails(getActiveUserDetails())
       setIsAuthenticated(true)
     }} />
   }
 
   const isAdmin = activeUser === 'admin'
-  const userDetails = getUserDetails(activeUser)
-  const displayName = userDetails?.firstName ? `${userDetails.firstName} ${userDetails.lastName || ''}`.trim() : activeUser
+  const displayName = activeUserDetails?.firstName && activeUserDetails?.lastName 
+    ? `${activeUserDetails.firstName} ${activeUserDetails.lastName}` 
+    : activeUser
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20">

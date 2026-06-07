@@ -6,15 +6,15 @@ export function getActiveUser() {
   return localStorage.getItem(ACTIVE_USER_KEY)
 }
 
-export function logoutUser() {
-  localStorage.removeItem(ACTIVE_USER_KEY)
-}
-
-export function getUserDetails(username) {
+export function getActiveUserDetails() {
+  const username = getActiveUser()
   if (!username) return null
   const users = JSON.parse(localStorage.getItem(USERS_KEY) || '{}')
-  const user = users[username.trim().toLowerCase()]
-  return typeof user === 'string' ? null : user
+  return users[username]
+}
+
+export function logoutUser() {
+  localStorage.removeItem(ACTIVE_USER_KEY)
 }
 
 export function loginUser(username, password) {
